@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order Ledger</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --text: #1f1d1a; --muted: #6b665e; --line: #e4e0d8;
+    --accent: #c2410c; --accent-text: #ffffff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+    --ok-bg: #dcfce7; --warn-bg: #fef3c7; --bad-bg: #fee2e2; --soft: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614; --card: #201f1c; --text: #f1eee8; --muted: #a39d92; --line: #37342e;
+      --accent: #fb923c; --accent-text: #1a1209; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+      --ok-bg: #14301f; --warn-bg: #3a2c0c; --bad-bg: #3b1616; --soft: #2a2824;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 900px; margin: 0 auto; padding: 20px 16px 8px; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  main { max-width: 900px; margin: 0 auto; padding: 8px 16px 40px; display: grid; gap: 16px; }
+  footer { max-width: 900px; margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .muted { color: var(--muted); } .small { font-size: 13px; }
+  .pill { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+  textarea, input, select { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  textarea { resize: vertical; }
+  textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+  .btn:hover { background: var(--soft); }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { color: var(--bad); }
+  .btn.small { padding: 4px 10px; font-size: 13px; }
+  .btn:disabled { opacity: .55; cursor: wait; }
+  #msg { min-height: 0; }
+  #msg .note { padding: 10px 14px; border-radius: 8px; }
+  .note.ok { background: var(--ok-bg); color: var(--ok); } .note.bad { background: var(--bad-bg); color: var(--bad); }
+  .banner { background: var(--warn-bg); color: var(--warn); padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+  .field { display: grid; gap: 4px; } .field > span { font-size: 13px; color: var(--muted); }
+  .items { display: grid; gap: 8px; margin: 12px 0 8px; }
+  .item-row { display: grid; grid-template-columns: 2fr 80px 90px 2fr 36px; gap: 8px; align-items: center; }
+  @media (max-width: 640px) { .item-row { grid-template-columns: 1fr 1fr; } }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; padding-bottom: 10px; }
+  .tab { font: inherit; background: none; border: 0; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: var(--muted); }
+  .tab.on { background: var(--soft); color: var(--text); font-weight: 600; }
+  .day { font-weight: 600; margin: 18px 0 8px; display: flex; gap: 8px; align-items: center; }
+  .day:first-child { margin-top: 0; }
+  .order { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 10px; display: grid; gap: 4px; }
+  .order.review { border-color: var(--warn); }
+  .o-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .o-money { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); } .chip.bad { background: var(--bad-bg); color: var(--bad); } .chip.ok { background: var(--ok-bg); color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; }
+  .scroll { overflow-x: auto; }
+  .empty { color: var(--muted); padding: 18px 0; text-align: center; }
+  a.btn { text-decoration: none; display: inline-block; }
+  details { margin-bottom: 12px; } summary { cursor: pointer; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 8px 0 0; padding: 10px; background: var(--soft); border-radius: 8px; font: 13px/1.4 ui-monospace, Consolas, monospace; color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Order Ledger</h1>
+  <span id="health" class="pill">checking…</span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>New order</h2>
+    <textarea id="chat" rows="6" placeholder="Paste a WhatsApp chat here (exported or copied). You can also type lines starting with C: for the customer and S: for you."></textarea>
+    <label class="field" style="margin-top:10px">
+      <span>Your name as it appears in the WhatsApp chat (only needed for pasted WhatsApp chats)</span>
+      <input id="seller" type="text" placeholder="e.g. Anita Cakes">
+    </label>
+    <div class="row">
+      <button id="parse" class="btn primary">Read order</button>
+      <button id="sample" class="btn">Load sample chat</button>
+      <button id="wa-sample" class="btn">Load WhatsApp-style sample</button>
+      <span id="spin" class="muted small"></span>
+    </div>
+  </section>
+
+  <div id="msg" role="status"></div>
+  <section id="review"></section>
+
+  <section class="card">
+    <div id="tabs" class="tabs"></div>
+    <div id="list"></div>
+  </section>
+</main>
+<footer>Everything runs on this computer. Chats and orders never leave it. Orders are saved in orders.json next to this app.</footer>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const TABS = [["schedule", "Schedule"], ["pending", "Pending payments"], ["all", "All orders"]];
+const UNITS = ["pcs", "kg", "litre", "box"];
+const SAMPLE = "C: bhaiya kal subah 20 samosa aur 1 dozen kachori chahiye\nS: ho jayega, 20 samosa 10 rs each = 200, kachori 12 x 15 = 180. total 380\nC: thik hai, paise delivery pe dungi. Neha, 9000000002";
+const TIME_KEY = { morning: "09:00", lunch: "13:00", afternoon: "15:00", evening: "18:00" };
+
+let orders = [];
+let draft = null;
+let tab = "schedule";
+let flashTimer = null;
+
+// ---------- small helpers ----------
+// el() builds DOM nodes with textContent, so nothing a customer types can inject HTML.
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  let pendingValue;
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v;
+    else if (k === "value") pendingValue = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, "");
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null) e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  if (pendingValue !== undefined) e.value = pendingValue; // set after children so <select> works
+  return e;
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) throw new Error(data?.error || res.statusText);
+  return data;
+}
+
+const todayIso = () => {
+  const d = new Date(), p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const money = (n) => (n == null ? "—" : "₹" + Number(n).toLocaleString("en-IN"));
+const balance = (o) => (o.amount == null ? null : Math.max(0, o.amount - (o.paid || 0)));
+const dateLabel = (iso) => iso ? new Date(iso + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) : "No date set";
+const timeKey = (t) => TIME_KEY[t] ?? t ?? "99:99";
+const itemsText = (o) =>
+  (o.items || []).map((i) => [i.qty ?? "some", i.unit && i.unit !== "pcs" ? i.unit : "", i.name].filter((x) => x !== "").join(" ")).join(", ") || "(no items)";
+
+function flash(text, kind = "ok", ms = 5000) {
+  const box = $("#msg");
+  box.replaceChildren(el("div", { class: "note " + kind }, text));
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => box.replaceChildren(), ms);
+}
+
+// ---------- local model status ----------
+async function checkHealth() {
+  const pill = $("#health");
+  try {
+    const h = await api("/api/health");
+    if (h.ollama && h.modelReady) { pill.className = "pill ok"; pill.textContent = "Local model ready: " + h.model; }
+    else if (h.ollama) { pill.className = "pill warn"; pill.textContent = "Ollama is running, but " + h.model + " is not downloaded"; }
+    else { pill.className = "pill bad"; pill.textContent = "Ollama is not running"; }
+  } catch { pill.className = "pill bad"; pill.textContent = "App server not reachable"; }
+}
+
+// ---------- WhatsApp import ----------
+// Turns an exported or copied WhatsApp chat into the "C:" / "S:" lines the model expects.
+const WA_HEADERS = [
+  // 13/10/2026, 10:30 - Name: text      or      [13/10/2026, 10:30:15 AM] Name: text
+  /^\[?(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}),?\s+(\d{1,2}[:.]\d{2}(?:[:.]\d{2})?(?:\s?[APap]\.?[Mm]\.?)?)\]?\s*(?:-\s*)?([^:]+?):\s?(.*)$/,
+  // [10:30 am, 13/10/2026] Name: text      (copied from WhatsApp Web)
+  /^\[(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[APap]\.?[Mm]\.?)?),\s*(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})\]\s*([^:]+?):\s?(.*)$/,
+];
+const WA_SKIP = /^(<media omitted>|(image|video|sticker|audio|gif|document) omitted|this message was deleted|you deleted this message|<attached: .*>)$/i;
+
+function convertChat(raw, sellerName) {
+  const lines = raw.replace(/[\u200e\u200f\u202a-\u202e]/g, "").replace(/[\u202f\u00a0]/g, " ").split(/\r?\n/);
+  const msgs = [];
+  for (const line of lines) {
+    let m = null;
+    for (const re of WA_HEADERS) { m = line.match(re); if (m) break; }
+    if (m) msgs.push({ sender: m[3].trim(), text: m[4].trim() });
+    else if (msgs.length && line.trim()) msgs[msgs.length - 1].text += " " + line.trim(); // multi-line message
+  }
+  if (!msgs.length) return { format: "plain", text: raw }; // already C:/S: lines, or not a WhatsApp export
+
+  const senders = [...new Set(msgs.map((m) => m.sender))];
+  const me = (sellerName || "").trim().toLowerCase();
+  if (!me) return { needName: true, reason: "This looks like a WhatsApp chat. Type your own name, exactly as it appears in the chat, in the name box.", senders };
+  const isSeller = (s) => { const x = s.toLowerCase(); return x === me || x.includes(me) || me.includes(x); };
+  if (!senders.some(isSeller)) return { needName: true, reason: `I couldn't find "${sellerName.trim()}" in this chat.`, senders };
+
+  const text = msgs
+    .map((m) => ({ ...m, text: m.text.replace(/\s*<This message was edited>$/i, "") }))
+    .filter((m) => m.text && !WA_SKIP.test(m.text))
+    .map((m) => `${isSeller(m.sender) ? "S" : "C"}: ${m.text}`)
+    .join("\n");
+  return { format: "whatsapp", text, senders };
+}
+// ---------- end WhatsApp import ----------
+
+// ---------- new order: paste, read, review ----------
+async function parseChat() {
+  const raw = $("#chat").value;
+  if (!raw.trim()) return flash("Paste a chat first.", "bad");
+  const seller = $("#seller").value;
+  try { localStorage.setItem("seller", seller.trim()); } catch {}
+  const conv = convertChat(raw, seller);
+  if (conv.needName) {
+    $("#seller").focus();
+    return flash(`${conv.reason} People in this chat: ${conv.senders.join(", ")}`, "bad", 12000);
+  }
+  const chat = conv.text;
+  if (!chat.trim()) return flash("I couldn't find any text messages in that chat.", "bad");
+  const btn = $("#parse"), spin = $("#spin");
+  btn.disabled = true;
+  const started = Date.now();
+  const tick = setInterval(() => { spin.textContent = `Reading the chat with the local model… ${Math.round((Date.now() - started) / 1000)}s`; }, 500);
+  spin.textContent = "Reading the chat with the local model…";
+  try {
+    const parsed = await api("/api/parse", { method: "POST", body: JSON.stringify({ chat }) });
+    draft = { ...parsed, source_chat: raw, model_input: conv.format === "whatsapp" ? chat : null };
+    renderForm();
+    $("#review").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    flash(e.message, "bad");
+  } finally {
+    clearInterval(tick);
+    spin.textContent = "";
+    btn.disabled = false;
+  }
+}
+
+function renderForm() {
+  const box = $("#review");
+  box.replaceChildren();
+  if (!draft) return;
+  const d = draft;
+
+  const field = (label, input) => el("label", { class: "field" }, el("span", {}, label), input);
+  const text = (key, ph = "") => el("input", { type: "text", value: d[key] ?? "", placeholder: ph, oninput: (e) => { d[key] = e.target.value; } });
+  const number = (key) => el("input", { type: "number", min: "0", step: "any", value: d[key] ?? "", oninput: (e) => { d[key] = e.target.value === "" ? null : Number(e.target.value); } });
+
+  const rows = el("div", { class: "items" });
+  const drawItems = () => {
+    rows.replaceChildren(...d.items.map((it, idx) => el("div", { class: "item-row" },
+      el("input", { type: "text", value: it.name, placeholder: "item", oninput: (e) => { it.name = e.target.value; } }),
+      el("input", { type: "number", min: "0", step: "any", value: it.qty ?? "", placeholder: "qty", oninput: (e) => { it.qty = e.target.value === "" ? null : Number(e.target.value); } }),
+      el("select", { value: it.unit ?? "", onchange: (e) => { it.unit = e.target.value || null; } }, el("option", { value: "" }, "unit"), UNITS.map((u) => el("option", { value: u }, u))),
+      el("input", { type: "text", value: it.notes ?? "", placeholder: "notes", oninput: (e) => { it.notes = e.target.value || null; } }),
+      el("button", { type: "button", class: "btn small", title: "Remove item", onclick: () => { d.items.splice(idx, 1); drawItems(); } }, "✕")
+    )));
+  };
+  drawItems();
+
+  box.append(el("div", { class: "card" },
+    el("h2", {}, d.id ? "Edit order" : "Check the order before saving"),
+    d.needs_review ? el("div", { class: "banner" }, "The chat was unclear, so please check the items, quantities and date carefully.") : null,
+    d.model_input ? el("details", { class: "small muted" }, el("summary", {}, "See what the model read"), el("pre", {}, d.model_input)) : null,
+    el("div", { class: "grid" },
+      field("Customer", text("customer")),
+      field("Phone", text("phone")),
+      field("Delivery date", el("input", { type: "date", value: d.delivery_date ?? "", oninput: (e) => { d.delivery_date = e.target.value || null; } })),
+      field("Time", text("delivery_time", "18:00 or evening")),
+      field("Total (₹)", number("amount")),
+      field("Paid so far (₹)", number("paid")),
+      field("Status", el("select", { value: d.status, onchange: (e) => { d.status = e.target.value; } },
+        ["confirmed", "tentative", "cancelled"].map((s) => el("option", { value: s }, s))))
+    ),
+    rows,
+    el("div", { class: "row" },
+      el("button", { type: "button", class: "btn small", onclick: () => { d.items.push({ name: "", qty: 1, unit: "pcs", notes: null }); drawItems(); } }, "+ Add item")),
+    el("div", { class: "row" },
+      el("button", { class: "btn primary", onclick: saveDraft }, d.id ? "Save changes" : "Save order"),
+      el("button", { class: "btn", onclick: () => { draft = null; renderForm(); } }, "Discard"))
+  ));
+}
+
+async function saveDraft() {
+  const d = draft;
+  if (!d.items.length || d.items.every((i) => !i.name.trim())) return flash("Add at least one item before saving.", "bad");
+  try {
+    if (d.id) await api("/api/orders/" + d.id, { method: "PUT", body: JSON.stringify(d) });
+    else await api("/api/orders", { method: "POST", body: JSON.stringify(d) });
+    draft = null;
+    renderForm();
+    $("#chat").value = "";
+    await loadOrders();
+    flash("Order saved.", "ok");
+  } catch (e) { flash(e.message, "bad"); }
+}
+
+// ---------- order actions ----------
+async function act(fn) {
+  try { await fn(); await loadOrders(); } catch (e) { flash(e.message, "bad"); }
+}
+const patch = (id, body) => act(() => api("/api/orders/" + id, { method: "PUT", body: JSON.stringify(body) }));
+const remove = (o) => { if (confirm("Delete the order for " + (o.customer || "this customer") + "?")) act(() => api("/api/orders/" + o.id, { method: "DELETE" })); };
+const edit = (o) => { draft = structuredClone(o); renderForm(); $("#review").scrollIntoView({ behavior: "smooth", block: "start" }); };
+
+async function copyReminder(o) {
+  const msg = `Hi ${o.customer || "there"}, a gentle reminder about your order (${itemsText(o)}). The balance of ${money(balance(o))} is still pending. Thank you! 🙏`;
+  try { await navigator.clipboard.writeText(msg); flash("Reminder copied. Paste it into WhatsApp.", "ok"); }
+  catch { prompt("Copy this message:", msg); }
+}
+
+// ---------- lists ----------
+const btn = (label, fn, cls = "") => el("button", { class: "btn small " + cls, onclick: fn }, label);
+
+function orderCard(o, actions) {
+  const notes = o.items.filter((i) => i.notes).map((i) => `${i.name}: ${i.notes}`).join(" · ");
+  return el("div", { class: "order" + (o.needs_review ? " review" : "") },
+    el("div", { class: "o-top" },
+      el("strong", {}, o.customer || "Unknown customer"),
+      o.phone ? el("span", { class: "muted" }, "· " + o.phone) : null,
+      o.delivery_time ? el("span", { class: "chip" }, o.delivery_time) : null,
+      o.status === "tentative" ? el("span", { class: "chip warn" }, "tentative") : null),
+    el("div", {}, itemsText(o)),
+    notes ? el("div", { class: "muted small" }, notes) : null,
+    el("div", { class: "o-money" }, `Total ${money(o.amount)} · Paid ${money(o.paid || 0)}`,
+      balance(o) > 0 ? el("span", { class: "chip warn" }, "Balance " + money(balance(o))) : null,
+      o.amount == null ? el("span", { class: "chip bad" }, "price missing") : null),
+    el("div", { class: "actions" }, actions));
+}
+
+function scheduleView() {
+  const today = todayIso();
+  const active = orders.filter((o) => o.status !== "cancelled" && !o.delivered);
+  if (!active.length) return [el("div", { class: "empty" }, "No upcoming orders. Paste a chat above to add one.")];
+  const groups = new Map();
+  for (const o of active) {
+    const k = o.delivery_date || "";
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  }
+  const keys = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
+  return keys.flatMap((k) => [
+    el("div", { class: "day" }, dateLabel(k), k && k < today ? el("span", { class: "chip bad" }, "overdue") : null, k === today ? el("span", { class: "chip ok" }, "today") : null),
+    ...groups.get(k).sort((a, b) => timeKey(a.delivery_time).localeCompare(timeKey(b.delivery_time))).map((o) =>
+      orderCard(o, [btn("Delivered", () => patch(o.id, { delivered: true })), btn("Edit", () => edit(o)), btn("Delete", () => remove(o), "danger")]))
+  ]);
+}
+
+function pendingView() {
+  const due = orders.filter((o) => o.status !== "cancelled" && o.amount != null && (o.paid || 0) < o.amount);
+  const total = due.reduce((s, o) => s + balance(o), 0);
+  if (!due.length) return [el("div", { class: "empty" }, "No pending payments.")];
+  return [
+    el("div", { class: "day" }, "Total pending: " + money(total)),
+    ...due.sort((a, b) => (a.delivery_date || "9").localeCompare(b.delivery_date || "9")).map((o) =>
+      orderCard(o, [btn("Copy reminder", () => copyReminder(o)), btn("Mark paid", () => patch(o.id, { paid: o.amount })), btn("Edit", () => edit(o))]))
+  ];
+}
+
+function allView() {
+  if (!orders.length) return [el("div", { class: "empty" }, "No orders yet.")];
+  const rows = [...orders].sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+  return [
+    el("div", { class: "row", style: "margin:0 0 10px" }, el("a", { class: "btn small", href: "/api/export.csv" }, "Export CSV for your accountant")),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, ["Date", "Customer", "Items", "Total", "Paid", "Status", ""].map((h) => el("th", {}, h)))),
+      el("tbody", {}, rows.map((o) => el("tr", {},
+        el("td", {}, o.delivery_date ? dateLabel(o.delivery_date) : "—"),
+        el("td", {}, o.customer || "—"),
+        el("td", {}, itemsText(o)),
+        el("td", {}, money(o.amount)),
+        el("td", {}, money(o.paid || 0)),
+        el("td", {}, o.status === "cancelled" ? "Cancelled" : o.delivered ? "Delivered" : o.status),
+        el("td", {}, el("div", { class: "actions", style: "margin:0" }, btn("Edit", () => edit(o)), btn("Delete", () => remove(o), "danger")))))))) 
+  ];
+}
+
+function renderList() {
+  $("#tabs").replaceChildren(...TABS.map(([k, label]) => el("button", { class: "tab" + (tab === k ? " on" : ""), onclick: () => { tab = k; renderList(); } }, label)));
+  const view = tab === "schedule" ? scheduleView() : tab === "pending" ? pendingView() : allView();
+  $("#list").replaceChildren(...view);
+}
+
+async function loadOrders() {
+  orders = await api("/api/orders");
+  renderList();
+}
+
+// ---------- start ----------
+$("#parse").addEventListener("click", parseChat);
+$("#sample").addEventListener("click", () => { $("#chat").value = SAMPLE; });
+const WA_SAMPLE = "13/10/2026, 10:12 - Vikram: Hello, order for birthday: 1 kg black forest, 'Happy Birthday Aarav' on it. Friday 6pm. Price?\n13/10/2026, 10:14 - Anita Cakes: 1000. Please pay 50% advance\n13/10/2026, 10:20 - Vikram: Paid 500. Vikram, +91 90000 00009";
+$("#wa-sample").addEventListener("click", () => { $("#chat").value = WA_SAMPLE; $("#seller").value = "Anita Cakes"; });
+try { $("#seller").value = localStorage.getItem("seller") || ""; } catch {}
+checkHealth();
+setInterval(checkHealth, 15000);
+loadOrders().catch((e) => flash(e.message, "bad"));
+</script>
+</body>
+</html>

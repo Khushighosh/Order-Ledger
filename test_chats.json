@@ -1,0 +1,278 @@
+{
+  "meta": {
+    "note": "SYNTHETIC test set. Names and phone numbers are fake. Expected outputs are hand-labelled; review them against your own judgement before trusting them.",
+    "reference_date": "2026-10-13",
+    "reference_weekday": "Tuesday",
+    "schema": {
+      "customer": "string|null",
+      "phone": "string|null (10 digits, no +91 or spaces)",
+      "items": "[{name, qty (number|null), unit (kg|pcs|litre|box|null), notes (string|null)}]",
+      "delivery_date": "YYYY-MM-DD|null",
+      "delivery_time": "HH:MM | morning | afternoon | evening | lunch | null",
+      "amount": "number|null (final agreed total in INR)",
+      "paid": "number (0 if nothing paid)",
+      "status": "confirmed | tentative | cancelled",
+      "needs_review": "boolean (true if info is missing or ambiguous)"
+    },
+    "rules": [
+      "Use the FINAL state of the order if the customer changes or removes things mid-chat.",
+      "Normalize dozens to pcs (1 dozen = 12 pcs).",
+      "Resolve relative dates (kal, parso, tomorrow, Saturday) from the reference date. Weekday names mean the next upcoming one.",
+      "Never invent values. Use null and set needs_review to true when something is missing or ambiguous."
+    ]
+  },
+  "cases": [
+    {
+      "id": 1,
+      "tags": ["english", "advance-payment", "weekday-resolution"],
+      "chat": [
+        "C: Hi akka, need 2kg chocolate cake eggless for Saturday evening. Name: Priya 9000000001",
+        "S: Sure! 1800 for 2kg. Advance?",
+        "C: Sending 500 now",
+        "S: Received 500, confirmed"
+      ],
+      "expected": {
+        "customer": "Priya",
+        "phone": "9000000001",
+        "items": [{"name": "chocolate cake", "qty": 2, "unit": "kg", "notes": "eggless"}],
+        "delivery_date": "2026-10-17",
+        "delivery_time": "evening",
+        "amount": 1800,
+        "paid": 500,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 2,
+      "tags": ["hinglish", "dozen", "relative-date", "pay-on-delivery"],
+      "chat": [
+        "C: bhaiya kal subah 20 samosa aur 1 dozen kachori chahiye",
+        "S: ho jayega, 20 samosa 10 rs each = 200, kachori 12 x 15 = 180. total 380",
+        "C: thik hai, paise delivery pe dungi. Neha, 9000000002"
+      ],
+      "expected": {
+        "customer": "Neha",
+        "phone": "9000000002",
+        "items": [
+          {"name": "samosa", "qty": 20, "unit": "pcs", "notes": null},
+          {"name": "kachori", "qty": 12, "unit": "pcs", "notes": null}
+        ],
+        "delivery_date": "2026-10-14",
+        "delivery_time": "morning",
+        "amount": 380,
+        "paid": 0,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 3,
+      "tags": ["kanglish", "explicit-date", "festival"],
+      "chat": [
+        "C: Madam, nange 3 kg mysore pak beku, Diwali ge. Nov 7th ge delivery madi",
+        "S: Sari, 3 kg = 2400",
+        "C: Okay. Advance 1000 PhonePe madide. Suresh 9000000003"
+      ],
+      "expected": {
+        "customer": "Suresh",
+        "phone": "9000000003",
+        "items": [{"name": "mysore pak", "qty": 3, "unit": "kg", "notes": null}],
+        "delivery_date": "2026-11-07",
+        "delivery_time": null,
+        "amount": 2400,
+        "paid": 1000,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 4,
+      "tags": ["tailoring", "multiple-notes", "weekday-resolution"],
+      "chat": [
+        "C: Hi, I want 2 blouses stitched, one with boat neck, one with princess cut. Fabric I'll bring tomorrow",
+        "S: Stitching 600 each. Ready by Friday?",
+        "C: Friday ok. Anjali 9000000004"
+      ],
+      "expected": {
+        "customer": "Anjali",
+        "phone": "9000000004",
+        "items": [{"name": "blouse stitching", "qty": 2, "unit": "pcs", "notes": "1 boat neck, 1 princess cut; customer brings fabric tomorrow"}],
+        "delivery_date": "2026-10-16",
+        "delivery_time": null,
+        "amount": 1200,
+        "paid": 0,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 5,
+      "tags": ["english", "order-changed-midway", "multiple-items"],
+      "chat": [
+        "C: Need 1 kg butterscotch cake for Sunday",
+        "S: Ok 900",
+        "C: Actually make it 1.5 kg and add 6 cupcakes",
+        "S: 1.5 kg = 1350, cupcakes 6 x 50 = 300. Total 1650",
+        "C: Done. Rahul 9000000005, will pay on delivery"
+      ],
+      "expected": {
+        "customer": "Rahul",
+        "phone": "9000000005",
+        "items": [
+          {"name": "butterscotch cake", "qty": 1.5, "unit": "kg", "notes": null},
+          {"name": "cupcakes", "qty": 6, "unit": "pcs", "notes": null}
+        ],
+        "delivery_date": "2026-10-18",
+        "delivery_time": null,
+        "amount": 1650,
+        "paid": 0,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 6,
+      "tags": ["tiffin", "item-removed", "implied-full-payment"],
+      "chat": [
+        "C: Tiffin for tomorrow lunch: 2 meals, 1 with extra roti",
+        "S: ok 70 each, extra roti 10",
+        "C: Oh sorry, skip the extra roti. Just 2 plain meals",
+        "S: 140 total then",
+        "C: Yes. Kiran 9000000006 paid via gpay"
+      ],
+      "expected": {
+        "customer": "Kiran",
+        "phone": "9000000006",
+        "items": [{"name": "meal", "qty": 2, "unit": "pcs", "notes": "plain, no extra roti"}],
+        "delivery_date": "2026-10-14",
+        "delivery_time": "lunch",
+        "amount": 140,
+        "paid": 140,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 7,
+      "tags": ["unresolvable-reference", "must-not-hallucinate"],
+      "chat": [
+        "C: Hi, same order as last time pls, Saturday morning. Meena 9000000007"
+      ],
+      "expected": {
+        "customer": "Meena",
+        "phone": "9000000007",
+        "items": [],
+        "delivery_date": "2026-10-17",
+        "delivery_time": "morning",
+        "amount": null,
+        "paid": 0,
+        "status": "tentative",
+        "needs_review": true
+      }
+    },
+    {
+      "id": 8,
+      "tags": ["hinglish", "box-unit", "parso", "advance-payment"],
+      "chat": [
+        "C: Didi 5 box laddoo chahiye, ek box mein 250g",
+        "S: 500 ka ek box, 5 box 2500",
+        "C: Advance mein 1000 bhej diya hai. Sunita ji, 9000000008. Parso tak chahiye"
+      ],
+      "expected": {
+        "customer": "Sunita",
+        "phone": "9000000008",
+        "items": [{"name": "laddoo", "qty": 5, "unit": "box", "notes": "250g per box"}],
+        "delivery_date": "2026-10-15",
+        "delivery_time": null,
+        "amount": 2500,
+        "paid": 1000,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 9,
+      "tags": ["english", "custom-message", "phone-format", "exact-time"],
+      "chat": [
+        "C: Hello, order for birthday: 1 kg black forest, 'Happy Birthday Aarav' on it. Friday 6pm. Price?",
+        "S: 1000. Please pay 50% advance",
+        "C: Paid 500. Vikram, +91 90000 00009"
+      ],
+      "expected": {
+        "customer": "Vikram",
+        "phone": "9000000009",
+        "items": [{"name": "black forest cake", "qty": 1, "unit": "kg", "notes": "message on cake: Happy Birthday Aarav"}],
+        "delivery_date": "2026-10-16",
+        "delivery_time": "18:00",
+        "amount": 1000,
+        "paid": 500,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 10,
+      "tags": ["english", "dozen", "full-payment", "exact-time"],
+      "chat": [
+        "C: Good morning, 4 dozen idli and 1 litre sambar for tomorrow 7am please. Ramesh, 9000000010",
+        "S: Ok. 4 dozen idli 192, sambar 80 = 272",
+        "C: Paid full 272. Thanks"
+      ],
+      "expected": {
+        "customer": "Ramesh",
+        "phone": "9000000010",
+        "items": [
+          {"name": "idli", "qty": 48, "unit": "pcs", "notes": null},
+          {"name": "sambar", "qty": 1, "unit": "litre", "notes": null}
+        ],
+        "delivery_date": "2026-10-14",
+        "delivery_time": "07:00",
+        "amount": 272,
+        "paid": 272,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 11,
+      "tags": ["quantity-range", "unconfirmed", "must-not-hallucinate"],
+      "chat": [
+        "C: Can you make some cookies for a party? Maybe 30-40 pieces, Sunday afternoon. Pooja 9000000011",
+        "S: Sure, 30 is 600, 40 is 800",
+        "C: Let me confirm tonight"
+      ],
+      "expected": {
+        "customer": "Pooja",
+        "phone": "9000000011",
+        "items": [{"name": "cookies", "qty": null, "unit": "pcs", "notes": "30-40 pcs; 30 = 600, 40 = 800"}],
+        "delivery_date": "2026-10-18",
+        "delivery_time": "afternoon",
+        "amount": null,
+        "paid": 0,
+        "status": "tentative",
+        "needs_review": true
+      }
+    },
+    {
+      "id": 12,
+      "tags": ["cancelled", "missing-customer-details"],
+      "chat": [
+        "C: Hi need 1 kg red velvet saturday",
+        "S: Sure 1200",
+        "C: Sorry, plan cancelled. Maybe next time"
+      ],
+      "expected": {
+        "customer": null,
+        "phone": null,
+        "items": [{"name": "red velvet cake", "qty": 1, "unit": "kg", "notes": null}],
+        "delivery_date": "2026-10-17",
+        "delivery_time": null,
+        "amount": 1200,
+        "paid": 0,
+        "status": "cancelled",
+        "needs_review": false
+      }
+    }
+  ]
+}

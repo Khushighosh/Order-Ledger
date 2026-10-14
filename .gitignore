@@ -1,0 +1,23 @@
+# Customer data: never commit real orders or exports
+orders.json
+*.csv
+
+# Evaluation output (regenerate with: node evaluate.mjs)
+results/
+
+# Dependencies and secrets
+node_modules/
+.env
+.env.*
+
+# Logs
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Note: test_chats.json and fresh_chats.json are synthetic
+# and ARE meant to be committed.

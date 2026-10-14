@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "note": "FRESH held-out test set. Written after the prompt was finalised. Do NOT tune the prompt on these. Names and phone numbers are fake. Expected outputs are hand-labelled; sanity-check them.",
+    "reference_date": "2026-10-13",
+    "reference_weekday": "Tuesday",
+    "rules": [
+      "Use the FINAL state of the order if the customer changes or removes things mid-chat.",
+      "Normalize dozens to pcs (1 dozen = 12 pcs). Half a kilo is 0.5 kg.",
+      "Resolve relative dates (kal, nale, aaj, tomorrow, Saturday) from the reference date. Weekday names mean the next upcoming one.",
+      "Never invent values. Use null and set needs_review to true when something is missing or ambiguous."
+    ]
+  },
+  "cases": [
+    {
+      "id": 1,
+      "tags": ["kanglish", "kannada-relative-date", "litre-unit", "full-payment"],
+      "chat": [
+        "C: Akka nale 2 litre dosa hittu beku",
+        "S: Sari, litre ge 60, 120 aaytu",
+        "C: PhonePe madide 120. Kavya, 9000000021"
+      ],
+      "expected": {
+        "customer": "Kavya",
+        "phone": "9000000021",
+        "items": [{"name": "dosa batter", "qty": 2, "unit": "litre", "notes": null}],
+        "delivery_date": "2026-10-14",
+        "delivery_time": null,
+        "amount": 120,
+        "paid": 120,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 2,
+      "tags": ["hinglish", "same-day", "exact-time", "box-unit", "pay-on-delivery"],
+      "chat": [
+        "C: Didi aaj shaam 6 baje 2 box brownies chahiye",
+        "S: Ek box 350, total 700",
+        "C: theek hai, cash on delivery. Rohit 9000000022"
+      ],
+      "expected": {
+        "customer": "Rohit",
+        "phone": "9000000022",
+        "items": [{"name": "brownies", "qty": 2, "unit": "box", "notes": null}],
+        "delivery_date": "2026-10-13",
+        "delivery_time": "18:00",
+        "amount": 700,
+        "paid": 0,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 3,
+      "tags": ["english", "price-negotiation", "explicit-date", "multiple-items", "advance-payment"],
+      "chat": [
+        "C: Hi, need 3 kg chakli and 2 kg murukku for 24th October",
+        "S: Chakli 500/kg, murukku 450/kg, so 2400 total",
+        "C: Can you do 2200?",
+        "S: Ok 2200 final",
+        "C: Great. Advance 1000 sent. Meghna 9000000023"
+      ],
+      "expected": {
+        "customer": "Meghna",
+        "phone": "9000000023",
+        "items": [
+          {"name": "chakli", "qty": 3, "unit": "kg", "notes": null},
+          {"name": "murukku", "qty": 2, "unit": "kg", "notes": null}
+        ],
+        "delivery_date": "2026-10-24",
+        "delivery_time": null,
+        "amount": 2200,
+        "paid": 1000,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 4,
+      "tags": ["english", "unconfirmed", "must-not-hallucinate", "missing-customer-details"],
+      "chat": [
+        "C: Thinking of ordering 1 kg rasmalai for Saturday",
+        "S: Sure, it's 800 per kg",
+        "C: Let me check with family and confirm tomorrow"
+      ],
+      "expected": {
+        "customer": null,
+        "phone": null,
+        "items": [{"name": "rasmalai", "qty": 1, "unit": "kg", "notes": null}],
+        "delivery_date": "2026-10-17",
+        "delivery_time": null,
+        "amount": 800,
+        "paid": 0,
+        "status": "tentative",
+        "needs_review": true
+      }
+    },
+    {
+      "id": 5,
+      "tags": ["hinglish", "fraction-quantity", "weekday-resolution", "full-payment"],
+      "chat": [
+        "C: bhaiya aadha kilo kaju katli chahiye Thursday ko",
+        "S: 1 kg 1200 hai, aadha 600",
+        "C: ok pack kar dena. Deepika, 9000000024, paise abhi bhej rahi hoon",
+        "S: ok",
+        "C: Done 600 sent"
+      ],
+      "expected": {
+        "customer": "Deepika",
+        "phone": "9000000024",
+        "items": [{"name": "kaju katli", "qty": 0.5, "unit": "kg", "notes": null}],
+        "delivery_date": "2026-10-15",
+        "delivery_time": null,
+        "amount": 600,
+        "paid": 600,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    },
+    {
+      "id": 6,
+      "tags": ["english", "name-inside-order", "exact-time", "full-payment", "weekday-resolution"],
+      "chat": [
+        "C: 12 cupcakes for my sister Riya's birthday, Wednesday 5pm. I'm Manish, 9000000026",
+        "S: 12 x 60 = 720",
+        "C: Paid full via UPI"
+      ],
+      "expected": {
+        "customer": "Manish",
+        "phone": "9000000026",
+        "items": [{"name": "cupcakes", "qty": 12, "unit": "pcs", "notes": "for Riya's birthday"}],
+        "delivery_date": "2026-10-14",
+        "delivery_time": "17:00",
+        "amount": 720,
+        "paid": 720,
+        "status": "confirmed",
+        "needs_review": false
+      }
+    }
+  ]
+}
